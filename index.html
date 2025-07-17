@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>马来西亚双城互动旅行助手</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals & Subtle Teal -->
+    <!-- Application Structure Plan: A single-page application with a sticky top navigation bar for seamless scrolling between sections. The structure is task-oriented, not a mirror of the report. Sections include: 1. Overview (high-level visual summary), 2. Pre-trip Checklist (interactive), 3. Daily Itineraries for Penang & KK (collapsible/interactive cards), 4. Food & Hotel Hubs (filterable galleries). This non-linear, hub-based design allows the user to access precisely what they need at different stages of their trip (e.g., checklist before leaving, daily guides while there), which is far more usable than a linear document. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Climate data (temp, rain days). Goal: Compare. Viz: Chart.js Bar Chart. Interaction: Tooltips. Justification: Provides an instant, clear visual comparison between Penang and KK, superior to text. Library: Chart.js (Canvas).
+        - Report Info: Pre-trip tasks (MDAC, eSIM). Goal: Inform/Organize. Viz: Interactive Checklist (HTML/CSS/JS). Interaction: Click to check/uncheck. Justification: More engaging and practical, gives user a sense of completion. Method: JS DOM manipulation.
+        - Report Info: Daily activities. Goal: Organize. Viz: Collapsible vertical timeline cards (HTML/CSS/JS). Interaction: Click to expand/collapse details. Justification: Manages information density, keeps the UI clean, and allows users to focus on one event at a time. Method: JS DOM manipulation.
+        - Report Info: Food/Hotel lists. Goal: Compare/Organize. Viz: Filterable card grid (HTML/CSS/JS). Interaction: Buttons to filter by city. Justification: Enables quick, context-specific decision making. Method: JS DOM manipulation.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Noto Sans SC', sans-serif; background-color: #FDFBF8; }
+        .chart-container { position: relative; width: 100%; max-width: 700px; margin-left: auto; margin-right: auto; height: 320px; max-height: 400px; }
+        @media (min-width: 768px) { .chart-container { height: 400px; } }
+        .nav-link { transition: color 0.3s, border-color 0.3s; }
+        .nav-link.active { color: #0d9488; border-bottom-color: #0d9488; }
+        .day-card { transition: all 0.3s ease-in-out; }
+        .checklist-item.completed { text-decoration: line-through; color: #9ca3af; }
+    </style>
+</head>
+<body class="bg-stone-50 text-slate-800">
+
+    <header class="bg-white/80 backdrop-blur-lg sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <span class="text-xl font-bold text-teal-700">🇲🇾 双城记</span>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#overview" class="nav-link px-3 py-2 text-sm font-medium text-slate-600 hover:text-teal-600 border-b-2 border-transparent">行程概览</a>
+                        <a href="#preparation" class="nav-link px-3 py-2 text-sm font-medium text-slate-600 hover:text-teal-600 border-b-2 border-transparent">行前准备</a>
+                        <a href="#penang" class="nav-link px-3 py-2 text-sm font-medium text-slate-600 hover:text-teal-600 border-b-2 border-transparent">槟城攻略</a>
+                        <a href="#kk" class="nav-link px-3 py-2 text-sm font-medium text-slate-600 hover:text-teal-600 border-b-2 border-transparent">亚庇攻略</a>
+                        <a href="#food" class="nav-link px-3 py-2 text-sm font-medium text-slate-600 hover:text-teal-600 border-b-2 border-transparent">美食地图</a>
+                        <a href="#hotels" class="nav-link px-3 py-2 text-sm font-medium text-slate-600 hover:text-teal-600 border-b-2 border-transparent">住宿推荐</a>
+                    </div>
+                </div>
+                 <div class="md:hidden">
+                    <select id="mobile-nav" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-teal-500 focus:border-teal-500 block w-full p-2.5">
+                        <option value="#overview">行程概览</option>
+                        <option value="#preparation">行前准备</option>
+                        <option value="#penang">槟城攻略</option>
+                        <option value="#kk">亚庇攻略</option>
+                        <option value="#food">美食地图</option>
+                        <option value="#hotels">住宿推荐</option>
+                    </select>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+
+        <section id="overview" class="mb-16 scroll-mt-20">
+            <h1 class="text-4xl md:text-5xl font-bold text-center mb-4 text-slate-900">尊享探索家指南</h1>
+            <p class="text-center text-lg text-slate-600 mb-12 max-w-3xl mx-auto">七日马来西亚双城记，从槟城古韵到婆罗洲之心。这是一个为您量身定制的交互式旅行计划，旨在将一次复杂的旅行，转化为无缝、高效且充满洞见的探索之旅。</p>
+            
+            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-6 text-center text-teal-700">核心行程一览</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                    <div class="p-4 bg-amber-50 rounded-xl">
+                        <p class="text-sm text-amber-800 font-semibold">10月3日 - 4日</p>
+                        <p class="text-lg font-bold mt-1">启程与中转</p>
+                        <p class="text-sm text-slate-600">北京 → 上海 → 槟城</p>
+                    </div>
+                    <div class="p-4 bg-teal-50 rounded-xl">
+                        <p class="text-sm text-teal-800 font-semibold">10月4日 - 6日</p>
+                        <p class="text-lg font-bold mt-1">槟城 · 古迹与风味</p>
+                        <p class="text-sm text-slate-600">乔治市世遗探索</p>
+                    </div>
+                    <div class="p-4 bg-sky-50 rounded-xl">
+                        <p class="text-sm text-sky-800 font-semibold">10月6日 - 9日</p>
+                        <p class="text-lg font-bold mt-1">亚庇 · 自然奇境</p>
+                        <p class="text-sm text-slate-600">海岛、雨林与日落</p>
+                    </div>
+                </div>
+
+                <div class="mt-8">
+                    <h3 class="text-xl font-bold mb-4 text-center text-slate-700">十月气候速览：槟城 vs. 亚庇</h3>
+                     <p class="text-center text-sm text-slate-500 mb-4">十月是两地的雨季，但通常为午后短暂的雷阵雨。本图表为您直观展示气候共性与差异，助您精准打包。</p>
+                    <div class="chart-container">
+                        <canvas id="climateChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="preparation" class="mb-16 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center mb-4 text-slate-900">行前必备清单</h2>
+            <p class="text-center text-slate-600 mb-10 max-w-2xl mx-auto">本清单旨在为您提供一站式行前检查服务，确保您在出发前已万事俱备。点击项目即可标记为完成，让准备过程清晰、无遗漏。</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-2xl shadow-lg">
+                    <h3 class="font-bold text-xl mb-4 text-teal-700 flex items-center"><span class="mr-2 text-2xl">🛂</span>入境协议</h3>
+                    <ul class="space-y-3">
+                        <li class="checklist-item flex items-center cursor-pointer"><span class="w-4 h-4 mr-3 border-2 border-slate-300 rounded-sm"></span>填写电子入境卡 (MDAC)</li>
+                        <li class="checklist-item flex items-center cursor-pointer"><span class="w-4 h-4 mr-3 border-2 border-slate-300 rounded-sm"></span>检查护照有效期 (超6个月)</li>
+                        <li class="checklist-item flex items-center cursor-pointer"><span class="w-4 h-4 mr-3 border-2 border-slate-300 rounded-sm"></span>保存护照电子版/复印件</li>
+                    </ul>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-lg">
+                    <h3 class="font-bold text-xl mb-4 text-teal-700 flex items-center"><span class="mr-2 text-2xl">📱</span>数字与财务</h3>
+                    <ul class="space-y-3">
+                         <li class="checklist-item flex items-center cursor-pointer"><span class="w-4 h-4 mr-3 border-2 border-slate-300 rounded-sm"></span>下载并注册Grab应用</li>
+                         <li class="checklist-item flex items-center cursor-pointer"><span class="w-4 h-4 mr-3 border-2 border-slate-300 rounded-sm"></span>提前购买eSIM并安装</li>
+                         <li class="checklist-item flex items-center cursor-pointer"><span class="w-4 h-4 mr-3 border-2 border-slate-300 rounded-sm"></span>兑换少量马币现金 (MYR)</li>
+                         <li class="checklist-item flex items-center cursor-pointer"><span class="w-4 h-4 mr-3 border-2 border-slate-300 rounded-sm"></span>携带国际信用卡 (Visa/Mastercard)</li>
+                    </ul>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-lg">
+                    <h3 class="font-bold text-xl mb-4 text-teal-700 flex items-center"><span class="mr-2 text-2xl">🧳</span>打包策略</h3>
+                    <ul class="space-y-3">
+                        <li class="checklist-item flex items-center cursor-pointer"><span class="w-4 h-4 mr-3 border-2 border-slate-300 rounded-sm"></span>轻便透气衣物为主</li>
+                        <li class="checklist-item flex items-center cursor-pointer"><span class="w-4 h-4 mr-3 border-2 border-slate-300 rounded-sm"></span>轻量化防水雨衣/雨披</li>
+                        <li class="checklist-item flex items-center cursor-pointer"><span class="w-4 h-4 mr-3 border-2 border-slate-300 rounded-sm"></span>高倍防晒霜、太阳镜、帽子</li>
+                        <li class="checklist-item flex items-center cursor-pointer"><span class="w-4 h-4 mr-3 border-2 border-slate-300 rounded-sm"></span>强效驱蚊液</li>
+                        <li class="checklist-item flex items-center cursor-pointer"><span class="w-4 h-4 mr-3 border-2 border-slate-300 rounded-sm"></span>长袖衣裤 (用于宗教场所)</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="penang" class="mb-16 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center mb-4 text-slate-900">槟城攻略：古迹与风味 (2天)</h2>
+            <p class="text-center text-slate-600 mb-10 max-w-2xl mx-auto">您在槟城的48小时将是一场与时间赛跑的感官盛宴。本攻略将紧凑的航班时刻表转化为高效而深刻的文化之旅，点击下方卡片，即可展开或收起每日的详细行程。</p>
+            <div class="space-y-8">
+                <div class="day-card bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <button class="w-full p-6 text-left" data-toggle="penang-day1">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-sm font-semibold text-teal-700">10月4日 · 第1天</p>
+                                <h3 class="text-xl font-bold mt-1">抵达日：世遗穿行与美食朝圣</h3>
+                            </div>
+                            <span class="transform transition-transform text-2xl text-teal-600">▼</span>
+                        </div>
+                    </button>
+                    <div id="penang-day1" class="hidden p-6 border-t border-slate-200">
+                        <ul class="space-y-4">
+                            <li><strong>上午 (7:30 - 13:00):</strong> 抵达槟城机场(PEN)，使用Grab前往乔治市酒店寄存行李。随后前往【多春茶室】享用炭火烤面包开启槟城之旅。</li>
+                            <li><strong>下午 (13:00 - 17:00):</strong> 步行探索联合国教科文组织世界文化遗产。沿【和谐之街】参观各大宗教场所，穿插寻找【姐弟共骑】等著名壁画，终点设在【姓氏桥】。</li>
+                            <li><strong>傍晚 (18:00起):</strong> 前往【新关仔角夜市】或【新巷小贩中心】，品尝炒粿条、亚参叻沙、福建虾面等地道美食。餐后可漫步至【唐人厝】感受文艺气息。</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="day-card bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <button class="w-full p-6 text-left" data-toggle="penang-day2">
+                        <div class="flex justify-between items-center">
+                             <div>
+                                <p class="text-sm font-semibold text-teal-700">10月5日 · 第2天</p>
+                                <h3 class="text-xl font-bold mt-1">登高望远与个性探索</h3>
+                            </div>
+                            <span class="transform transition-transform text-2xl text-teal-600">▼</span>
+                        </div>
+                    </button>
+                    <div id="penang-day2" class="hidden p-6 border-t border-slate-200">
+                         <ul class="space-y-4">
+                            <li><strong>上午 (8:00 - 13:00):</strong> 乘坐缆车登【升旗山】，在山顶的【The Habitat】生态公园体验树顶步道，俯瞰全城景色。</li>
+                            <li><strong>下午 (14:00 - 18:00):</strong> 根据兴趣三选一：A. 【Escape Penang】极限挑战；B. 【虫鸣大地蝴蝶公园】自然人文；C. 【峇都丁宜海滩】海岸休闲。</li>
+                            <li><strong>傍晚 (18:00起):</strong> 在峇都丁宜享用日落晚餐，或返回乔治市进行最后的味蕾探索。<strong>关键：</strong>早睡！为次日凌晨4点的送机做准备。</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="kk" class="mb-16 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center mb-4 text-slate-900">亚庇攻略：婆罗洲之心 (4天)</h2>
+            <p class="text-center text-slate-600 mb-10 max-w-2xl mx-auto">欢迎来到“风下之乡”沙巴。这里的旅程将围绕壮丽的自然风光展开，从清澈的海岛到神秘的红树林。善用组织良好的一日游产品将是您成功的关键。</p>
+            <div class="space-y-8">
+                <div class="day-card bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <button class="w-full p-6 text-left" data-toggle="kk-day1">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-sm font-semibold text-sky-700">10月6日 · 第3天</p>
+                                <h3 class="text-xl font-bold mt-1">抵达日：城市地标巡礼</h3>
+                            </div>
+                            <span class="transform transition-transform text-2xl text-sky-600">▼</span>
+                        </div>
+                    </button>
+                    <div id="kk-day1" class="hidden p-6 border-t border-slate-200">
+                         <ul class="space-y-4">
+                            <li><strong>上午 (9:15 - 12:00):</strong> 抵达亚庇机场(BKI)，乘Grab至市中心酒店办理入住。</li>
+                            <li><strong>下午 (12:00 - 17:00):</strong> 在【发记茶餐室】品尝鱼杂粉。随后参观【水上清真寺】，并登上【信号山观景台】俯瞰市景。</li>
+                            <li><strong>傍晚 (18:00起):</strong> 前往【大茄来海鲜餐厅】，享用一顿丰盛且价格实惠的海鲜大餐，必试湿奶油虾。</li>
+                        </ul>
+                    </div>
+                </div>
+                 <div class="day-card bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <button class="w-full p-6 text-left" data-toggle="kk-day2">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-sm font-semibold text-sky-700">10月7日 · 第4天</p>
+                                <h3 class="text-xl font-bold mt-1">海岛天堂：东姑阿都拉曼海洋公园</h3>
+                            </div>
+                           <span class="transform transition-transform text-2xl text-sky-600">▼</span>
+                        </div>
+                    </button>
+                    <div id="kk-day2" class="hidden p-6 border-t border-slate-200">
+                        <p><strong>全天规划:</strong> 参加【双岛游】一日游套餐或自行前往【哲斯顿码头】购票。推荐组合：上午在【沙比岛】尽情浮潜，观赏鱼群；下午前往设施更完善的【马努干岛】享用午餐和沙滩休闲。</p>
+                    </div>
+                </div>
+                <div class="day-card bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <button class="w-full p-6 text-left" data-toggle="kk-day3">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-sm font-semibold text-sky-700">10月8日 · 第5天</p>
+                                <h3 class="text-xl font-bold mt-1">雨林探秘：长鼻猴与萤火虫之舞</h3>
+                            </div>
+                            <span class="transform transition-transform text-2xl text-sky-600">▼</span>
+                        </div>
+                    </button>
+                    <div id="kk-day3" class="hidden p-6 border-t border-slate-200">
+                         <ul class="space-y-4">
+                             <li><strong>上午 (9:00 - 14:00):</strong> 自由活动。可参观【沙巴州立博物馆】或逛【菲律宾市场】购买手工艺品。</li>
+                             <li><strong>下午及傍晚 (14:00 - 21:30):</strong> 参加【Kawa Kawa红树林】巡游（预订含接送的套餐）。沿河寻找长鼻猴，欣赏滩涂日落，天黑后观赏萤火虫将红树林点缀成“圣诞树”的奇景。</li>
+                         </ul>
+                    </div>
+                </div>
+                <div class="day-card bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <button class="w-full p-6 text-left" data-toggle="kk-day4">
+                        <div class="flex justify-between items-center">
+                             <div>
+                                <p class="text-sm font-semibold text-sky-700">10月9日 · 第6天</p>
+                                <h3 class="text-xl font-bold mt-1">华丽终章：世界级日落与归途</h3>
+                            </div>
+                            <span class="transform transition-transform text-2xl text-sky-600">▼</span>
+                        </div>
+                    </button>
+                    <div id="kk-day4" class="hidden p-6 border-t border-slate-200">
+                        <ul class="space-y-4">
+                            <li><strong>上午 (至14:00):</strong> 最后采购纪念品，享用告别午餐，从酒店退房。</li>
+                            <li><strong>下午 (14:30 - 16:30):</strong> 前往【丹绒亚路海滩】，在【香格里拉日落吧】或公众海滩，欣赏被誉为世界三大最美日落之一的壮丽景象。</li>
+                            <li><strong>出发 (16:30起):</strong> 从丹绒亚路直接乘Grab前往机场，为18:00起飞的AK1560航班做准备。</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="food" class="mb-16 scroll-mt-20">
+             <h2 class="text-3xl font-bold text-center mb-4 text-slate-900">寻味马来西亚</h2>
+            <p class="text-center text-slate-600 mb-10 max-w-2xl mx-auto">马来西亚的灵魂深藏于街头巷尾的食物香气之中。这里是为您精选的两地必尝美食清单。使用下方的按钮，可以轻松筛选您当前所在城市的美食。</p>
+            <div class="flex justify-center mb-8 space-x-2">
+                <button class="food-filter-btn active bg-teal-600 text-white font-bold py-2 px-4 rounded-full" data-city="all">全部</button>
+                <button class="food-filter-btn bg-white text-slate-700 font-bold py-2 px-4 rounded-full border border-slate-300" data-city="槟城">槟城</button>
+                <button class="food-filter-btn bg-white text-slate-700 font-bold py-2 px-4 rounded-full border border-slate-300" data-city="亚庇">亚庇</button>
+            </div>
+            <div id="food-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            </div>
+        </section>
+
+        <section id="hotels" class="scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center mb-4 text-slate-900">精选下榻之所</h2>
+            <p class="text-center text-slate-600 mb-10 max-w-2xl mx-auto">酒店不仅是休息的地方，更是旅行体验的延伸。这里为您精选了符合“探索家”品味的下榻之所，它们或本身就是一段历史，或能提供无与伦比的便利与景观。</p>
+             <div class="flex justify-center mb-8 space-x-2">
+                <button class="hotel-filter-btn active bg-teal-600 text-white font-bold py-2 px-4 rounded-full" data-city="all">全部</button>
+                <button class="hotel-filter-btn bg-white text-slate-700 font-bold py-2 px-4 rounded-full border border-slate-300" data-city="槟城">槟城</button>
+                <button class="hotel-filter-btn bg-white text-slate-700 font-bold py-2 px-4 rounded-full border border-slate-300" data-city="亚庇">亚庇</button>
+            </div>
+            <div id="hotel-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-slate-800 text-white mt-16">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-sm">
+            <p>&copy; 2025 尊享探索家指南。祝您旅途愉快！</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            const foodData = [
+                { city: '槟城', name: '炒粿条 (Char Kway Teow)', desc: '锅气十足的酱油风味炒米粉，配料丰富。', icon: '🍜' },
+                { city: '槟城', name: '亚参叻沙 (Assam Laksa)', desc: '酸辣开胃的鱼汤米粉，风味独特。', icon: '🌶️' },
+                { city: '槟城', name: '福建虾面 (Hokkien Mee)', desc: '浓郁鲜美的虾汤面，汤头是精华。', icon: '🦐' },
+                { city: '槟城', name: '煎蕊 (Cendol)', desc: '椰浆与椰糖融合的国民刨冰甜点。', icon: '🍧' },
+                { city: '亚庇', name: '海鲜 (Seafood)', desc: '新鲜生猛，价格实惠，推荐湿奶油做法。', icon: '🦀' },
+                { city: '亚庇', name: '鱼杂粉 (Fish Noodle Soup)', desc: '鲜甜鱼汤搭配米粉和新鲜鱼杂。', icon: '🐟' },
+                { city: '亚庇', name: '斗亚兰面 (Tuaran Mee)', desc: '本地特色手工炒鸡蛋面，口感Q弹。', icon: '🍳' },
+                { city: '亚庇', name: '椰子布丁 (Coconut Pudding)', desc: '清甜爽滑的椰子甜点，解暑佳品。', icon: '🥥' },
+            ];
+
+            const hotelData = [
+                { city: '槟城', name: '张弼士故居-蓝屋', style: '顶级古迹奢华', bestFor: '终极古迹沉浸式体验', icon: '🏛️' },
+                { city: '槟城', name: '七间老厝酒店', style: '娘惹风情古迹', bestFor: '寻求文化与优雅的旅客', icon: '🏮' },
+                { city: '槟城', name: '坎贝尔之家', style: '精品古迹设计', bestFor: '注重设计感与便利性的探索者', icon: '💎' },
+                { city: '亚庇', name: '亚庇市中心美居酒店', style: '现代、高性价比', bestFor: '追求便利与性价比的跳岛游客', icon: '🏨' },
+                { city: '亚庇', name: '哥打京那巴鲁万豪酒店', style: '现代奢华', bestFor: '喜爱屋顶泳池与时尚氛围的旅客', icon: '🏊' },
+                { city: '亚庇', name: '香格里拉丹绒亚路度假酒店', style: '豪华海滨度假', bestFor: '追求极致日落景观与度假体验', icon: '🌅' },
+            ];
+
+            const foodGrid = document.getElementById('food-grid');
+            const hotelGrid = document.getElementById('hotel-grid');
+
+            function renderItems(grid, data, filter) {
+                grid.innerHTML = '';
+                const filteredData = data.filter(item => filter === 'all' || item.city === filter);
+                filteredData.forEach(item => {
+                    const card = document.createElement('div');
+                    if (grid.id === 'food-grid') {
+                        card.innerHTML = `
+                            <div class="bg-white p-6 rounded-2xl shadow-lg h-full flex flex-col">
+                                <div class="text-4xl mb-4">${item.icon}</div>
+                                <h4 class="font-bold text-lg text-slate-900">${item.name}</h4>
+                                <p class="text-slate-600 text-sm mt-2 flex-grow">${item.desc}</p>
+                            </div>`;
+                    } else {
+                         card.innerHTML = `
+                            <div class="bg-white p-6 rounded-2xl shadow-lg h-full flex flex-col">
+                                <div class="text-4xl mb-4">${item.icon}</div>
+                                <h4 class="font-bold text-lg text-slate-900">${item.name}</h4>
+                                <p class="text-teal-600 font-semibold text-sm mt-2">${item.style}</p>
+                                <p class="text-slate-600 text-sm mt-2 flex-grow">${item.bestFor}</p>
+                            </div>`;
+                    }
+                    grid.appendChild(card);
+                });
+            }
+            
+            renderItems(foodGrid, foodData, 'all');
+            renderItems(hotelGrid, hotelData, 'all');
+
+            function setupFilterButtons(btnClass, grid, data) {
+                 const filterBtns = document.querySelectorAll(btnClass);
+                 filterBtns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        filterBtns.forEach(b => b.classList.remove('active', 'bg-teal-600', 'text-white'));
+                        filterBtns.forEach(b => b.classList.add('bg-white', 'text-slate-700'));
+
+                        btn.classList.add('active', 'bg-teal-600', 'text-white');
+                        btn.classList.remove('bg-white', 'text-slate-700');
+                        
+                        const city = btn.dataset.city;
+                        renderItems(grid, data, city);
+                    });
+                });
+            }
+
+            setupFilterButtons('.food-filter-btn', foodGrid, foodData);
+            setupFilterButtons('.hotel-filter-btn', hotelGrid, hotelData);
+
+            const climateCtx = document.getElementById('climateChart').getContext('2d');
+            new Chart(climateCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['日均最高温 (°C)', '日均最低温 (°C)', '月均雨天 (天)'],
+                    datasets: [
+                        {
+                            label: '槟城',
+                            data: [31, 24, 20],
+                            backgroundColor: 'rgba(13, 148, 136, 0.6)',
+                            borderColor: 'rgba(13, 148, 136, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: '亚庇',
+                            data: [30.5, 24, 21.5],
+                            backgroundColor: 'rgba(14, 165, 233, 0.6)',
+                            borderColor: 'rgba(14, 165, 233, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true } },
+                    plugins: {
+                        title: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) { label += ': '; }
+                                    if (context.parsed.y !== null) { label += context.parsed.y; }
+                                    if(context.dataIndex === 2) { label += ' 天'; }
+                                    else { label += '°C'; }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            const toggleButtons = document.querySelectorAll('[data-toggle]');
+            toggleButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetId = button.dataset.toggle;
+                    const targetElement = document.getElementById(targetId);
+                    const icon = button.querySelector('span');
+                    
+                    if (targetElement) {
+                        targetElement.classList.toggle('hidden');
+                        icon.classList.toggle('rotate-180');
+                    }
+                });
+            });
+
+            const checklistItems = document.querySelectorAll('.checklist-item');
+            checklistItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    item.classList.toggle('completed');
+                    const checkmark = item.querySelector('span');
+                    checkmark.classList.toggle('bg-teal-500');
+                    checkmark.classList.toggle('border-teal-500');
+                });
+            });
+
+            const sections = document.querySelectorAll('section');
+            const navLinks = document.querySelectorAll('.nav-link');
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        navLinks.forEach(link => {
+                            link.classList.toggle('active', link.getAttribute('href').substring(1) === entry.target.id);
+                        });
+                    }
+                });
+            }, { rootMargin: "-50% 0px -50% 0px" });
+
+            sections.forEach(section => observer.observe(section));
+            
+            const mobileNav = document.getElementById('mobile-nav');
+            mobileNav.addEventListener('change', (event) => {
+                window.location.hash = event.target.value;
+            });
+        });
+    </script>
+</body>
+</html>
